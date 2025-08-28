@@ -1,0 +1,13 @@
+# Example configuration for testing a stdio MCP server
+server:
+  transport: stdio
+  host: "python my_mcp_server.py"  # Command to run the server
+
+test:
+  tool_name: calculator
+  tool_args:
+    operation: "add"
+    a: 10
+    b: 20
+  concurrent_requests: 3
+  duration_seconds: 15

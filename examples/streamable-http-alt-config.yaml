@@ -1,0 +1,14 @@
+# Example configuration for testing a streamable HTTP MCP server  
+server:
+  transport: streamable_http
+  host: localhost
+  port: 8080
+  path: /mcp
+
+test:
+  tool_name: process_data
+  tool_args:
+    data: [1, 2, 3, 4, 5]
+    operation: "sum"
+  concurrent_requests: 5
+  duration_seconds: 60

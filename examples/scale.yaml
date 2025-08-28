@@ -1,0 +1,13 @@
+# Example configuration for testing an HTTP MCP server
+server:
+  transport: sse
+  host: localhost
+  port: 8080
+  path: /sse 
+
+test:
+  tool_name: echo
+  tool_args:
+    message: "Hello from load test"
+  concurrent_requests: 1
+  duration_seconds: 1

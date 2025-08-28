@@ -1,0 +1,14 @@
+# Example configuration for testing an SSE MCP server
+server:
+  transport: sse
+  host: localhost
+  port: 3000
+  path: /mcp
+
+test:
+  tool_name: example_tool
+  tool_args:
+    message: "Hello from load test"
+    count: 42
+  concurrent_requests: 10
+  duration_seconds: 30

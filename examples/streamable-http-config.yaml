@@ -1,0 +1,14 @@
+# Example configuration for testing a streamable HTTP MCP server
+server:
+  transport: streamable_http
+  host: localhost
+  port: 3000
+  path: /mcp
+
+test:
+  tool_name: example_tool
+  tool_args:
+    message: "Hello from streamable HTTP test"
+    count: 42
+  concurrent_requests: 10
+  duration_seconds: 30
