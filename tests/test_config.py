@@ -28,6 +28,7 @@ def test_test_config_validation() -> None:
     assert config.tool_args == {"message": "test"}
     assert config.concurrent_requests == 5
     assert config.duration_seconds == 10
+    assert config.shared_session is False  # Default value
 
 
 def test_complete_config() -> None:
@@ -50,6 +51,19 @@ def test_invalid_transport() -> None:
     """Test invalid transport type."""
     with pytest.raises(ValueError):
         ServerConfig(transport="invalid", host="localhost")  # type: ignore[arg-type]
+
+
+def test_shared_session_config() -> None:
+    """Test shared session configuration."""
+    config = LoadTestConfig(
+        tool_name="echo",
+        tool_args={"message": "test"},
+        concurrent_requests=3,
+        duration_seconds=5,
+        shared_session=True,
+    )
+
+    assert config.shared_session is True
 
 
 def test_invalid_concurrent_requests() -> None:

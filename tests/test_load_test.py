@@ -15,6 +15,7 @@ def test_test_stats_initialization() -> None:
     assert stats.errors == []
     assert stats.start_time is None
     assert stats.end_time is None
+    assert stats.sessions_created == 0
 
 
 def test_test_stats_add_success() -> None:
@@ -71,6 +72,7 @@ def test_test_stats_to_dict_empty() -> None:
     result = stats.to_dict()
 
     assert result["requests_sent"] == 0
+    assert result["sessions_created"] == 0
     assert result["response_times"]["min_ms"] == 0.0
     assert result["response_times"]["max_ms"] == 0.0
     assert result["response_times"]["avg_ms"] == 0.0
@@ -98,3 +100,18 @@ def test_test_stats_execution_time() -> None:
     assert (
         result["throughput"]["successes_per_second"] == 0.36
     )  # 2 successes / 5.5 seconds
+
+
+def test_session_tracking() -> None:
+    """Test session creation tracking."""
+    stats = LoadTestStats()
+
+    # Test session tracking
+    stats.add_session_created()
+    stats.add_session_created()
+    stats.add_session_created()
+
+    assert stats.sessions_created == 3
+
+    result = stats.to_dict()
+    assert result["sessions_created"] == 3

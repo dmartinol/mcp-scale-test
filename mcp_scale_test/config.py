@@ -24,6 +24,7 @@ class LoadTestConfig(BaseModel):
     tool_args: Dict[str, Any] = Field(default_factory=dict)
     concurrent_requests: int = Field(ge=1, default=1)
     duration_seconds: int = Field(ge=1, default=60)
+    shared_session: bool = Field(default=False)
 
 
 class Config(BaseModel):

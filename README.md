@@ -48,11 +48,83 @@ server:
 
 test:
   tool_name: "echo"          # MCP tool to test
-  tool_args:                 # Arguments for the tool
-    message: "test data"
+  tool_args:                 # Arguments for the tool (supports variables)
+    message: "Request {{counter}} at {{timestamp}}"
+    priority: "{{random.randint(1,5)}}"
   concurrent_requests: 5     # Number of concurrent workers
   duration_seconds: 30       # Test duration
+  shared_session: false      # Use shared session for all workers (default: false)
 ```
+
+## Dynamic Variables
+
+Tool arguments support built-in variables that are expanded for each request:
+
+- **`{{timestamp}}`**: Current Unix timestamp (float)
+- **`{{counter}}`**: Incrementing request counter (starts at 1)
+- **`{{random.randint(min,max)}}`**: Random integer in specified range
+
+Variables work in nested structures and preserve types when used alone:
+
+```yaml
+tool_args:
+  # Mixed text and variables
+  message: "User {{counter}} at {{timestamp}}"
+  
+  # Type preservation - these become actual int/float values
+  user_id: "{{counter}}"
+  timestamp: "{{timestamp}}"
+  priority: "{{random.randint(1,10)}}"
+  
+  # Nested structures
+  metadata:
+    request_id: "req-{{counter}}-{{random.randint(1000,9999)}}"
+    config:
+      timeout: "{{random.randint(5,30)}}"
+      
+  # Arrays
+  tags: ["test_{{counter}}", "priority_{{random.randint(1,3)}}"]
+```
+
+Each request gets unique values, enabling realistic load testing with varied data.
+
+## Session Management
+
+Control how MCP connections are managed within each worker:
+
+### Shared Session Per Worker (default: false)
+```yaml
+test:
+  shared_session: true   # Each worker reuses one connection for all requests
+```
+
+**Benefits:**
+- More realistic application usage (persistent connections)
+- Better performance due to connection reuse
+- Tests session-level concurrency handling
+- Lower connection overhead
+
+### New Connection Per Request (default)
+```yaml
+test:
+  shared_session: false  # Each request creates a new connection
+```
+
+**Benefits:**
+- Tests connection establishment overhead  
+- Simulates serverless/stateless scenarios
+- Higher isolation between requests
+- Tests server's connection handling under load
+
+**Use shared sessions when:**
+- Simulating persistent client applications
+- Testing session concurrency limits
+- Optimizing for performance
+
+**Use new connections when:**
+- Testing connection pooling and limits
+- Simulating high-churn scenarios (serverless, etc.)
+- Measuring connection establishment costs
 
 ## Transport Types
 
@@ -95,6 +167,7 @@ results:
   requests_received: 148
   successes: 145
   failures: 3
+  sessions_created: 5
   execution_time:
     total_seconds: 30.125
     start_time: 1640995200.0

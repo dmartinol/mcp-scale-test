@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from .client import MCPClient, create_client
 from .config import Config
+from .variables import VariableExpander
 
 
 @dataclass
@@ -21,6 +22,7 @@ class LoadTestStats:
     errors: List[str] = field(default_factory=list)
     start_time: Optional[float] = None
     end_time: Optional[float] = None
+    sessions_created: int = 0
 
     def add_success(self, response_time: float) -> None:
         """Record a successful request."""
@@ -38,6 +40,10 @@ class LoadTestStats:
             self.requests_received += 1
             self.response_times.append(response_time)
 
+    def add_session_created(self) -> None:
+        """Record that a new MCP session was created."""
+        self.sessions_created += 1
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert stats to dictionary for YAML output."""
         result: Dict[str, Any] = {
@@ -45,6 +51,7 @@ class LoadTestStats:
             "requests_received": self.requests_received,
             "successes": self.successes,
             "failures": self.failures,
+            "sessions_created": self.sessions_created,
         }
 
         # Add execution time information
@@ -108,6 +115,7 @@ class LoadTester:
         self.config = config
         self.stats = LoadTestStats()
         self._stop_event = asyncio.Event()
+        self._variable_expander = VariableExpander()
 
     async def run_test(self) -> Dict[str, Any]:
         """Run the load test and return results."""
@@ -121,6 +129,13 @@ class LoadTester:
 
         # Start the timer
         asyncio.create_task(self._timer())
+
+        session_mode = (
+            "shared session per worker"
+            if self.config.test.shared_session
+            else "new connection per request"
+        )
+        print(f"Using {session_mode}")
 
         # Create and start concurrent workers
         tasks = []
@@ -139,7 +154,8 @@ class LoadTester:
             f"Test completed in {execution_time:.2f}s. "
             f"Sent: {self.stats.requests_sent}, "
             f"Received: {self.stats.requests_received}, "
-            f"Successes: {self.stats.successes}, Failures: {self.stats.failures}"
+            f"Successes: {self.stats.successes}, Failures: {self.stats.failures}, "
+            f"Sessions: {self.stats.sessions_created}"
         )
         if execution_time > 0:
             success_rate = (
@@ -162,36 +178,91 @@ class LoadTester:
     async def _worker(self, worker_id: str) -> None:
         """Worker coroutine that sends requests until stopped."""
         try:
-            # Create client and use proper async context manager
-            client = create_client(self.config.server)
-            await client.connect()
+            if self.config.test.shared_session:
+                # Create one client connection for this worker and reuse it
+                client = create_client(self.config.server)
+                await client.connect()
+                self.stats.add_session_created()  # Track session creation
 
-            # Use the client as an async context manager
-            async with client:
-                await self._run_worker_loop(client, worker_id)
+                # Use the client as an async context manager
+                async with client:
+                    await self._run_worker_loop_with_shared_session(client, worker_id)
+            else:
+                # Create new connection for each request
+                await self._run_worker_loop_without_shared_session(worker_id)
 
         except asyncio.TimeoutError:
             self.stats.add_failure(f"Worker {worker_id} connection timeout")
         except Exception as e:
             self.stats.add_failure(f"Worker {worker_id} error: {str(e)}")
 
-    async def _run_worker_loop(self, client: MCPClient, worker_id: str) -> None:
-        """Run the main worker loop for sending requests."""
+    async def _run_worker_loop_with_shared_session(
+        self, client: MCPClient, worker_id: str
+    ) -> None:
+        """Run worker loop with shared session - reuse same client connection."""
         # Keep sending requests until stopped
         while not self._stop_event.is_set():
-            await self._send_request(client, worker_id)
+            await self._send_request_with_client(client, worker_id)
 
             # Small delay to prevent overwhelming the server
             await asyncio.sleep(0.01)
 
-    async def _send_request(self, client: MCPClient, _worker_id: str) -> None:
-        """Send a single request and record the result."""
+    async def _run_worker_loop_without_shared_session(self, worker_id: str) -> None:
+        """Run worker loop without shared session - new connection per request."""
+        # Keep sending requests until stopped
+        while not self._stop_event.is_set():
+            await self._send_request_with_new_connection(worker_id)
+
+            # Small delay to prevent overwhelming the server
+            await asyncio.sleep(0.01)
+
+    async def _send_request_with_client(
+        self, client: MCPClient, _worker_id: str
+    ) -> None:
+        """Send a single request using provided client connection."""
         start_time = time.time()
 
         try:
-            await client.call_tool(
-                self.config.test.tool_name, self.config.test.tool_args
+            # Expand variables in tool arguments for each request
+            expanded_args = self._variable_expander.expand_arguments(
+                self.config.test.tool_args
             )
+
+            await client.call_tool(self.config.test.tool_name, expanded_args)
+
+            end_time = time.time()
+            response_time = end_time - start_time
+
+            # MCP client raises exceptions for errors, success if we get here
+            self.stats.add_success(response_time)
+
+        except asyncio.CancelledError:
+            # Worker was cancelled, this is expected during shutdown
+            pass
+
+        except Exception as e:
+            end_time = time.time()
+            response_time = end_time - start_time
+            self.stats.add_failure(f"Request error: {str(e)}", response_time)
+
+    async def _send_request_with_new_connection(self, _worker_id: str) -> None:
+        """Send a single request creating a new connection each time."""
+        start_time = time.time()
+
+        try:
+            # Create new client for this single request
+            client = create_client(self.config.server)
+            await client.connect()
+            self.stats.add_session_created()  # Track session creation
+
+            # Use the client as an async context manager
+            async with client:
+                # Expand variables in tool arguments for each request
+                expanded_args = self._variable_expander.expand_arguments(
+                    self.config.test.tool_args
+                )
+
+                await client.call_tool(self.config.test.tool_name, expanded_args)
 
             end_time = time.time()
             response_time = end_time - start_time
