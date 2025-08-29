@@ -19,6 +19,8 @@ class LoadTestStats:
     failures: int = 0
     response_times: List[float] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
+    start_time: Optional[float] = None
+    end_time: Optional[float] = None
 
     def add_success(self, response_time: float) -> None:
         """Record a successful request."""
@@ -45,6 +47,15 @@ class LoadTestStats:
             "failures": self.failures,
         }
 
+        # Add execution time information
+        if self.start_time is not None and self.end_time is not None:
+            execution_time_seconds = self.end_time - self.start_time
+            result["execution_time"] = {
+                "total_seconds": round(execution_time_seconds, 3),
+                "start_time": self.start_time,
+                "end_time": self.end_time,
+            }
+
         if self.response_times:
             response_times_dict: Dict[str, float] = {
                 "min_ms": min(self.response_times) * 1000,
@@ -65,7 +76,29 @@ class LoadTestStats:
                 error_summary[error] = error_summary.get(error, 0) + 1
             result["error_summary"] = error_summary
 
+        # Add throughput metrics if we have execution time
+        if (
+            self.start_time is not None
+            and self.end_time is not None
+            and self.execution_time_seconds > 0
+        ):
+            result["throughput"] = {
+                "requests_per_second": round(
+                    self.requests_sent / self.execution_time_seconds, 2
+                ),
+                "successes_per_second": round(
+                    self.successes / self.execution_time_seconds, 2
+                ),
+            }
+
         return result
+
+    @property
+    def execution_time_seconds(self) -> float:
+        """Get execution time in seconds."""
+        if self.start_time is not None and self.end_time is not None:
+            return self.end_time - self.start_time
+        return 0.0
 
 
 class LoadTester:
@@ -83,6 +116,9 @@ class LoadTester:
             f"concurrent requests for {self.config.test.duration_seconds} seconds..."
         )
 
+        # Record start time
+        self.stats.start_time = time.time()
+
         # Start the timer
         asyncio.create_task(self._timer())
 
@@ -95,11 +131,26 @@ class LoadTester:
         # Wait for all workers to complete
         await asyncio.gather(*tasks, return_exceptions=True)
 
+        # Record end time
+        self.stats.end_time = time.time()
+
+        execution_time = self.stats.execution_time_seconds
         print(
-            f"Test completed. Sent: {self.stats.requests_sent}, "
+            f"Test completed in {execution_time:.2f}s. "
+            f"Sent: {self.stats.requests_sent}, "
             f"Received: {self.stats.requests_received}, "
             f"Successes: {self.stats.successes}, Failures: {self.stats.failures}"
         )
+        if execution_time > 0:
+            success_rate = (
+                (self.stats.successes / self.stats.requests_sent * 100)
+                if self.stats.requests_sent > 0
+                else 0
+            )
+            print(
+                f"Throughput: {self.stats.requests_sent / execution_time:.1f} req/s, "
+                f"Success rate: {success_rate:.1f}%"
+            )
 
         return self.stats.to_dict()
 
