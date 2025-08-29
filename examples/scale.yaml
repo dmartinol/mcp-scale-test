@@ -10,4 +10,4 @@ test:
   tool_args:
     message: "Hello from load test"
   concurrent_requests: 20
-  duration_seconds: 10
+  duration_seconds: 60

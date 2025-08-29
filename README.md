@@ -95,15 +95,31 @@ results:
   requests_received: 148
   successes: 145
   failures: 3
+  execution_time:
+    total_seconds: 30.125
+    start_time: 1640995200.0
+    end_time: 1640995230.125
   response_times:
     min_ms: 12.5
     max_ms: 234.7
     avg_ms: 45.2
+  throughput:
+    requests_per_second: 4.98
+    successes_per_second: 4.81
   error_summary:
     "Connection timeout": 2
     "Tool error: Invalid input": 1
 ```
 
+## Output Metrics
+
+The tool provides comprehensive performance metrics:
+
+- **Request Counts**: Total sent/received, successes, failures
+- **Execution Time**: Precise timing with start/end timestamps and total duration
+- **Response Times**: Min, max, and average response times in milliseconds
+- **Throughput**: Requests per second and success rate calculations
+- **Error Analysis**: Categorized error summary with occurrence counts
 
 ## Requirements
 
