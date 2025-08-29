@@ -90,25 +90,52 @@ class SseMCPClient(MCPClient):
     
     def __init__(self, config: ServerConfig):
         super().__init__(config)
-        self._connection = None
+        self._sse_context = None
+        self._session_context = None
     
     async def connect(self) -> None:
         """Connect to MCP server via SSE endpoint."""
         url = self._build_url()
         print(f"SSE URL: {url}")
         
-        # Create a connection wrapper that maintains the context
-        self._connection = SSEConnection(url)
-        await self._connection.connect()
+        # Create the SSE context that will be used in the async with pattern
+        self._sse_context = sse_client(url, timeout=10.0)
+    
+    async def __aenter__(self):
+        """Enter the async context for proper SSE management."""
+        if not self._sse_context:
+            raise RuntimeError("Must call connect() first")
         
-        self.session = ClientSession(self._connection.read, self._connection.write)
+        # Enter the SSE context manager
+        read, write = await self._sse_context.__aenter__()
+        
+        # Use ClientSession as async context manager like the working implementation
+        from mcp.types import Implementation
+        client_info = Implementation(name="mcp-scale-test", version="0.1.0")
+        
+        # Store the session context manager
+        self._session_context = ClientSession(read, write, client_info=client_info)
+        self.session = await self._session_context.__aenter__()
+        
+        # Initialize the session
         await asyncio.wait_for(self.session.initialize(), timeout=10.0)
+        
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Exit the async context."""
+        # Exit session context first
+        if self._session_context:
+            await self._session_context.__aexit__(exc_type, exc_val, exc_tb)
+        
+        # Then exit SSE context
+        if self._sse_context:
+            await self._sse_context.__aexit__(exc_type, exc_val, exc_tb)
     
     async def disconnect(self) -> None:
         """Close the session and transport."""
-        if self._connection:
-            await self._connection.disconnect()
-        self._connection = None
+        # Context manager handles cleanup
+        pass
     
     def _build_url(self) -> str:
         port_part = f":{self.config.port}" if self.config.port else ""
@@ -116,58 +143,57 @@ class SseMCPClient(MCPClient):
         return f"http://{self.config.host}{port_part}{path_part}"
 
 
-class SSEConnection:
-    """Wrapper to properly manage SSE connection lifecycle."""
-    
-    def __init__(self, url: str):
-        self.url = url
-        self._context = None
-        self.read = None
-        self.write = None
-    
-    async def connect(self) -> None:
-        """Establish SSE connection."""
-        self._context = sse_client(self.url, timeout=10.0)
-        self.read, self.write = await self._context.__aenter__()
-    
-    async def disconnect(self) -> None:
-        """Close SSE connection."""
-        if self._context:
-            try:
-                await self._context.__aexit__(None, None, None)
-            except Exception:
-                pass
-
-
 class StreamableHttpMCPClient(MCPClient):
     """MCP client using streamable HTTP transport."""
     
     def __init__(self, config: ServerConfig):
         super().__init__(config)
-        self._context_manager = None
-        self._streams = None
+        self._http_context = None
+        self._session_context = None
     
     async def connect(self) -> None:
         """Connect to MCP server via streamable HTTP endpoint."""
         url = self._build_url()
+        print(f"Streamable HTTP URL: {url}")
         
-        # Store the context manager and enter it
-        self._context_manager = streamablehttp_client(url, timeout=10.0)
-        self._streams = await self._context_manager.__aenter__()
-        read, write, _ = self._streams
+        # Create the streamable HTTP context that will be used in the async with pattern
+        self._http_context = streamablehttp_client(url, timeout=10.0)
+    
+    async def __aenter__(self):
+        """Enter the async context for proper streamable HTTP management."""
+        if not self._http_context:
+            raise RuntimeError("Must call connect() first")
         
-        self.session = ClientSession(read, write)
-        await self.session.initialize()
+        # Enter the streamable HTTP context manager
+        read, write, _ = await self._http_context.__aenter__()
+        
+        # Use ClientSession as async context manager like the working implementation
+        from mcp.types import Implementation
+        client_info = Implementation(name="mcp-scale-test", version="0.1.0")
+        
+        # Store the session context manager
+        self._session_context = ClientSession(read, write, client_info=client_info)
+        self.session = await self._session_context.__aenter__()
+        
+        # Initialize the session
+        await asyncio.wait_for(self.session.initialize(), timeout=10.0)
+        
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Exit the async context."""
+        # Exit session context first
+        if self._session_context:
+            await self._session_context.__aexit__(exc_type, exc_val, exc_tb)
+        
+        # Then exit streamable HTTP context
+        if self._http_context:
+            await self._http_context.__aexit__(exc_type, exc_val, exc_tb)
     
     async def disconnect(self) -> None:
         """Close the session and transport."""
-        if self._context_manager:
-            try:
-                await self._context_manager.__aexit__(None, None, None)
-            except Exception:
-                pass  # Ignore cleanup errors
-        self._context_manager = None
-        self._streams = None
+        # Context manager handles cleanup
+        pass
     
     def _build_url(self) -> str:
         port_part = f":{self.config.port}" if self.config.port else ""

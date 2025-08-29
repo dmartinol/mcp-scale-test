@@ -101,31 +101,35 @@ class LoadTester:
     
     async def _worker(self, worker_id: str) -> None:
         """Worker coroutine that sends requests until stopped."""
-        client: Optional[MCPClient] = None
-        
         try:
-            # Create and connect client with timeout
+            # Create client and use proper async context manager
             client = create_client(self.config.server)
-            await asyncio.wait_for(client.connect(), timeout=25.0)
+            await client.connect()
             
-            # Keep sending requests until stopped
-            while not self._stop_event.is_set():
-                await self._send_request(client, worker_id)
-                
-                # Small delay to prevent overwhelming the server
-                await asyncio.sleep(0.01)
+            # Use the client as an async context manager for SSE clients
+            if hasattr(client, '__aenter__'):
+                async with client:
+                    await self._run_worker_loop(client, worker_id)
+            else:
+                # For stdio clients that don't have context manager
+                try:
+                    await self._run_worker_loop(client, worker_id)
+                finally:
+                    await client.disconnect()
         
         except asyncio.TimeoutError:
             self.stats.add_failure(f"Worker {worker_id} connection timeout")
         except Exception as e:
             self.stats.add_failure(f"Worker {worker_id} error: {str(e)}")
-        
-        finally:
-            if client:
-                try:
-                    await client.disconnect()
-                except Exception as e:
-                    print(f"Error disconnecting {worker_id}: {e}")
+    
+    async def _run_worker_loop(self, client: MCPClient, worker_id: str) -> None:
+        """Run the main worker loop for sending requests."""
+        # Keep sending requests until stopped
+        while not self._stop_event.is_set():
+            await self._send_request(client, worker_id)
+            
+            # Small delay to prevent overwhelming the server
+            await asyncio.sleep(0.01)
     
     async def _send_request(self, client: MCPClient, worker_id: str) -> None:
         """Send a single request and record the result."""
