@@ -115,16 +115,9 @@ class LoadTester:
             client = create_client(self.config.server)
             await client.connect()
 
-            # Use the client as an async context manager for SSE clients
-            if hasattr(client, "__aenter__"):
-                async with client:
-                    await self._run_worker_loop(client, worker_id)
-            else:
-                # For stdio clients that don't have context manager
-                try:
-                    await self._run_worker_loop(client, worker_id)
-                finally:
-                    await client.disconnect()
+            # Use the client as an async context manager
+            async with client:
+                await self._run_worker_loop(client, worker_id)
 
         except asyncio.TimeoutError:
             self.stats.add_failure(f"Worker {worker_id} connection timeout")

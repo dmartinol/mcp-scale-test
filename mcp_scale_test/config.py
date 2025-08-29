@@ -5,7 +5,7 @@ from typing import Any, Dict, Literal, Optional
 import yaml
 from pydantic import BaseModel, Field
 
-TransportType = Literal["stdio", "sse", "streamable_http"]
+TransportType = Literal["sse", "streamable_http"]
 
 
 class ServerConfig(BaseModel):

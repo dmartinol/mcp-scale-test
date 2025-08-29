@@ -49,7 +49,7 @@ def test_complete_config():
 def test_invalid_transport():
     """Test invalid transport type."""
     with pytest.raises(ValueError):
-        ServerConfig(transport="invalid", host="localhost")
+        ServerConfig(transport="stdio", host="localhost")
 
 
 def test_invalid_concurrent_requests():

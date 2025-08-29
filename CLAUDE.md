@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working with this MCP scale test
 
 ## Project Overview
 
-Python CLI tool for load testing MCP (Model Context Protocol) servers. Uses the official Python MCP client library to establish connections via stdio, SSE, or streamable HTTP transports and measures performance under concurrent load.
+Python CLI tool for load testing MCP (Model Context Protocol) servers. Uses the official Python MCP client library to establish connections via SSE or streamable HTTP transports and measures performance under concurrent load.
 
 ## Key Architecture Components
 
@@ -32,7 +32,6 @@ pip install -e .
 
 ## Transport Implementation Notes
 
-**stdio**: Spawns process and communicates via stdin/stdout using `stdio_client()`
 **sse**: HTTP Server-Sent Events using `sse_client()` 
 **streamable_http**: HTTP streaming using `streamablehttp_client()`
 
@@ -50,7 +49,6 @@ All transports use the official MCP Python library context managers.
 ## Configuration Examples
 
 Located in `examples/` directory:
-- `stdio-config.yaml`: Process-based servers
 - `sse-config.yaml`: HTTP SSE servers  
 - `streamable-http-config.yaml`: HTTP streaming servers
 

@@ -4,7 +4,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
-from mcp import ClientSession, StdioServerParameters, stdio_client
+from mcp import ClientSession
 from mcp.client.sse import sse_client
 from mcp.client.streamable_http import streamablehttp_client
 from mcp.types import Tool
@@ -52,43 +52,6 @@ class MCPClient(ABC):
         """Close connection to MCP server."""
         pass
 
-
-class StdioMCPClient(MCPClient):
-    """MCP client using stdio transport."""
-
-    def __init__(self, config: ServerConfig):
-        super().__init__(config)
-        self._context_manager = None
-        self._streams = None
-
-    async def connect(self) -> None:
-        """Start the MCP server process and initialize session."""
-        # For stdio, the host contains the command to run
-        command_parts = self.config.host.split()
-
-        server_params = StdioServerParameters(
-            command=command_parts[0],
-            args=command_parts[1:] if len(command_parts) > 1 else [],
-            env=None,
-        )
-
-        # Store the context manager and enter it
-        self._context_manager = stdio_client(server_params)
-        self._streams = await self._context_manager.__aenter__()
-        read, write = self._streams
-
-        self.session = ClientSession(read, write)
-        await self.session.initialize()
-
-    async def disconnect(self) -> None:
-        """Close the session and transport."""
-        if self._context_manager:
-            try:
-                await self._context_manager.__aexit__(None, None, None)
-            except Exception:
-                pass  # Ignore cleanup errors
-        self._context_manager = None
-        self._streams = None
 
 
 class SseMCPClient(MCPClient):
@@ -211,14 +174,12 @@ class StreamableHttpMCPClient(MCPClient):
 
 def create_client(config: ServerConfig) -> MCPClient:
     """Factory function to create the appropriate client based on transport type."""
-    if config.transport == "stdio":
-        return StdioMCPClient(config)
-    elif config.transport == "sse":
+    if config.transport == "sse":
         return SseMCPClient(config)
     elif config.transport == "streamable_http":
         return StreamableHttpMCPClient(config)
     else:
         raise ValueError(
             f"Unsupported transport type: {config.transport}. "
-            "Supported types: stdio, sse, streamable_http"
+            "Supported types: sse, streamable_http"
         )

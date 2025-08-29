@@ -41,8 +41,8 @@ Create YAML configuration files specifying the MCP server and test parameters:
 
 ```yaml
 server:
-  transport: "stdio" | "sse" | "streamable_http"
-  host: "localhost"           # For stdio: command to execute
+  transport: "sse" | "streamable_http"
+  host: "localhost"           # Server hostname
   port: 8080                  # Port for sse/streamable_http
   path: "/sse"               # Endpoint path (optional)
 
@@ -55,14 +55,6 @@ test:
 ```
 
 ## Transport Types
-
-### stdio
-For MCP servers that communicate via stdin/stdout:
-```yaml
-server:
-  transport: stdio
-  host: "python my_mcp_server.py"  # Command to run the server
-```
 
 ### sse (Server-Sent Events)
 For MCP servers using SSE over HTTP:
@@ -112,24 +104,6 @@ results:
     "Tool error: Invalid input": 1
 ```
 
-## Development
-
-```bash
-# Install with development dependencies
-uv sync --dev
-
-# Run tests
-uv run pytest
-
-# Code quality checks
-uv run ruff check .
-uv run ruff format .
-uv run mypy .
-
-# Or with pip
-pip install -e ".[dev]"
-pytest && ruff check . && mypy .
-```
 
 ## Requirements
 
