@@ -2,6 +2,7 @@
 
 import asyncio
 from abc import ABC, abstractmethod
+from datetime import timedelta
 from typing import Any, Dict, List, Optional
 
 from mcp import ClientSession
@@ -52,6 +53,13 @@ class MCPClient(ABC):
         """Close connection to MCP server."""
         pass
 
+    async def __aenter__(self) -> "MCPClient":
+        """Default implementation for context manager."""
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """Default implementation for context manager."""
+        await self.disconnect()
 
 
 class SseMCPClient(MCPClient):
@@ -59,8 +67,8 @@ class SseMCPClient(MCPClient):
 
     def __init__(self, config: ServerConfig):
         super().__init__(config)
-        self._sse_context = None
-        self._session_context = None
+        self._sse_context: Any = None
+        self._session_context: Any = None
 
     async def connect(self) -> None:
         """Connect to MCP server via SSE endpoint."""
@@ -70,7 +78,7 @@ class SseMCPClient(MCPClient):
         # Create the SSE context that will be used in the async with pattern
         self._sse_context = sse_client(url, timeout=10.0)
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "SseMCPClient":
         """Enter the async context for proper SSE management."""
         if not self._sse_context:
             raise RuntimeError("Must call connect() first")
@@ -92,7 +100,7 @@ class SseMCPClient(MCPClient):
 
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Exit the async context."""
         # Exit session context first
         if self._session_context:
@@ -118,8 +126,8 @@ class StreamableHttpMCPClient(MCPClient):
 
     def __init__(self, config: ServerConfig):
         super().__init__(config)
-        self._http_context = None
-        self._session_context = None
+        self._http_context: Any = None
+        self._session_context: Any = None
 
     async def connect(self) -> None:
         """Connect to MCP server via streamable HTTP endpoint."""
@@ -127,9 +135,9 @@ class StreamableHttpMCPClient(MCPClient):
         print(f"Streamable HTTP URL: {url}")
 
         # Create the streamable HTTP context that will be used in the async with pattern
-        self._http_context = streamablehttp_client(url, timeout=10.0)
+        self._http_context = streamablehttp_client(url, timeout=timedelta(seconds=10.0))
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "StreamableHttpMCPClient":
         """Enter the async context for proper streamable HTTP management."""
         if not self._http_context:
             raise RuntimeError("Must call connect() first")
@@ -151,7 +159,7 @@ class StreamableHttpMCPClient(MCPClient):
 
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Exit the async context."""
         # Exit session context first
         if self._session_context:

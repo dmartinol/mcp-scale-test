@@ -20,10 +20,10 @@ typecheck: ## Run type checking
 	uv run mypy .
 
 test: ## Run tests
-	uv run pytest
+	uv run pytest -p no:singlestoredb
 
 test-verbose: ## Run tests with verbose output
-	uv run pytest -v
+	uv run pytest -v -p no:singlestoredb
 
 check: lint typecheck test ## Run all checks (lint, typecheck, test)
 

@@ -10,7 +10,7 @@ from .config import Config
 
 
 @dataclass
-class TestStats:
+class LoadTestStats:
     """Statistics for a load test run."""
 
     requests_sent: int = 0
@@ -38,7 +38,7 @@ class TestStats:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert stats to dictionary for YAML output."""
-        result = {
+        result: Dict[str, Any] = {
             "requests_sent": self.requests_sent,
             "requests_received": self.requests_received,
             "successes": self.successes,
@@ -46,24 +46,24 @@ class TestStats:
         }
 
         if self.response_times:
-            result["response_times"] = {
+            response_times_dict: Dict[str, float] = {
                 "min_ms": min(self.response_times) * 1000,
                 "max_ms": max(self.response_times) * 1000,
                 "avg_ms": sum(self.response_times) / len(self.response_times) * 1000,
             }
         else:
-            result["response_times"] = {
+            response_times_dict = {
                 "min_ms": 0.0,
                 "max_ms": 0.0,
                 "avg_ms": 0.0,
             }
+        result["response_times"] = response_times_dict
 
         if self.errors:
-            result["error_summary"] = {}
+            error_summary: Dict[str, int] = {}
             for error in self.errors:
-                result["error_summary"][error] = (
-                    result["error_summary"].get(error, 0) + 1
-                )
+                error_summary[error] = error_summary.get(error, 0) + 1
+            result["error_summary"] = error_summary
 
         return result
 
@@ -73,7 +73,7 @@ class LoadTester:
 
     def __init__(self, config: Config):
         self.config = config
-        self.stats = TestStats()
+        self.stats = LoadTestStats()
         self._stop_event = asyncio.Event()
 
     async def run_test(self) -> Dict[str, Any]:

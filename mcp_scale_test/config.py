@@ -17,7 +17,7 @@ class ServerConfig(BaseModel):
     path: Optional[str] = None
 
 
-class TestConfig(BaseModel):
+class LoadTestConfig(BaseModel):
     """Load test configuration."""
 
     tool_name: str
@@ -30,7 +30,7 @@ class Config(BaseModel):
     """Complete configuration for MCP scale testing."""
 
     server: ServerConfig
-    test: TestConfig
+    test: LoadTestConfig
 
 
 def load_config(config_path: str) -> Config:

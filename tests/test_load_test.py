@@ -1,11 +1,11 @@
 """Tests for load testing functionality."""
 
-from mcp_scale_test.load_test import TestStats
+from mcp_scale_test.load_test import LoadTestStats
 
 
-def test_test_stats_initialization():
+def test_test_stats_initialization() -> None:
     """Test TestStats initialization."""
-    stats = TestStats()
+    stats = LoadTestStats()
 
     assert stats.requests_sent == 0
     assert stats.requests_received == 0
@@ -15,9 +15,9 @@ def test_test_stats_initialization():
     assert stats.errors == []
 
 
-def test_test_stats_add_success():
+def test_test_stats_add_success() -> None:
     """Test adding successful requests."""
-    stats = TestStats()
+    stats = LoadTestStats()
 
     stats.add_success(0.1)
     stats.add_success(0.2)
@@ -29,9 +29,9 @@ def test_test_stats_add_success():
     assert stats.response_times == [0.1, 0.2]
 
 
-def test_test_stats_add_failure():
+def test_test_stats_add_failure() -> None:
     """Test adding failed requests."""
-    stats = TestStats()
+    stats = LoadTestStats()
 
     stats.add_failure("Connection error", 0.05)
     stats.add_failure("Timeout")
@@ -44,9 +44,9 @@ def test_test_stats_add_failure():
     assert stats.errors == ["Connection error", "Timeout"]
 
 
-def test_test_stats_to_dict():
+def test_test_stats_to_dict() -> None:
     """Test converting stats to dictionary."""
-    stats = TestStats()
+    stats = LoadTestStats()
     stats.add_success(0.1)
     stats.add_success(0.3)
     stats.add_failure("Error", 0.2)
@@ -63,9 +63,9 @@ def test_test_stats_to_dict():
     assert result["error_summary"]["Error"] == 1
 
 
-def test_test_stats_to_dict_empty():
+def test_test_stats_to_dict_empty() -> None:
     """Test converting empty stats to dictionary."""
-    stats = TestStats()
+    stats = LoadTestStats()
     result = stats.to_dict()
 
     assert result["requests_sent"] == 0
