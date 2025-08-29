@@ -1,0 +1,74 @@
+"""Tests for load testing functionality."""
+
+from mcp_scale_test.load_test import TestStats
+
+
+def test_test_stats_initialization():
+    """Test TestStats initialization."""
+    stats = TestStats()
+
+    assert stats.requests_sent == 0
+    assert stats.requests_received == 0
+    assert stats.successes == 0
+    assert stats.failures == 0
+    assert stats.response_times == []
+    assert stats.errors == []
+
+
+def test_test_stats_add_success():
+    """Test adding successful requests."""
+    stats = TestStats()
+
+    stats.add_success(0.1)
+    stats.add_success(0.2)
+
+    assert stats.requests_sent == 2
+    assert stats.requests_received == 2
+    assert stats.successes == 2
+    assert stats.failures == 0
+    assert stats.response_times == [0.1, 0.2]
+
+
+def test_test_stats_add_failure():
+    """Test adding failed requests."""
+    stats = TestStats()
+
+    stats.add_failure("Connection error", 0.05)
+    stats.add_failure("Timeout")
+
+    assert stats.requests_sent == 2
+    assert stats.requests_received == 1  # Only first failure had response time
+    assert stats.successes == 0
+    assert stats.failures == 2
+    assert stats.response_times == [0.05]
+    assert stats.errors == ["Connection error", "Timeout"]
+
+
+def test_test_stats_to_dict():
+    """Test converting stats to dictionary."""
+    stats = TestStats()
+    stats.add_success(0.1)
+    stats.add_success(0.3)
+    stats.add_failure("Error", 0.2)
+
+    result = stats.to_dict()
+
+    assert result["requests_sent"] == 3
+    assert result["requests_received"] == 3
+    assert result["successes"] == 2
+    assert result["failures"] == 1
+    assert result["response_times"]["min_ms"] == 100.0
+    assert result["response_times"]["max_ms"] == 300.0
+    assert abs(result["response_times"]["avg_ms"] - 200.0) < 0.001
+    assert result["error_summary"]["Error"] == 1
+
+
+def test_test_stats_to_dict_empty():
+    """Test converting empty stats to dictionary."""
+    stats = TestStats()
+    result = stats.to_dict()
+
+    assert result["requests_sent"] == 0
+    assert result["response_times"]["min_ms"] == 0.0
+    assert result["response_times"]["max_ms"] == 0.0
+    assert result["response_times"]["avg_ms"] == 0.0

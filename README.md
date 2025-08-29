@@ -1,20 +1,12 @@
 # MCP Scale Test
 
-CLI tool for load testing MCP (Model Context Protocol) servers to evaluate performance and scalability under concurrent requests.
-
-## Features
-
-- **Multiple MCP Transports**: Supports stdio, SSE, and streamable HTTP transports
-- **Concurrent Load Testing**: Configurable number of concurrent workers
-- **Comprehensive Metrics**: Request/response counts, success/failure ratios, response times
-- **YAML Configuration**: Easy-to-use configuration files with examples
-- **Flexible Output**: Console output or save results to YAML files
+CLI tool for load testing MCP (Model Context Protocol) servers with configurable concurrent requests.
 
 ## Installation
 
 ```bash
 # Using uv (recommended)
-uv sync
+make install
 
 # Or using pip
 pip install -e .
@@ -23,14 +15,24 @@ pip install -e .
 ## Quick Start
 
 ```bash
-# Run a basic load test
-uv run mcp-scale-test --config examples/stdio-config.yaml
+# Run example load test
+uv run mcp-scale-test --config examples/scale.yaml --verbose
+```
 
-# Save detailed results
-uv run mcp-scale-test --config examples/sse-config.yaml --output results.yaml --verbose
+## Development
 
-# Test with custom parameters
-uv run mcp-scale-test --config examples/streamable-http-config.yaml
+```bash
+# Install development dependencies
+make install-dev
+
+# Run code formatting and checks
+make format lint typecheck test
+
+# Or individual commands
+make format    # Format code
+make lint      # Check code style  
+make typecheck # Type checking
+make test      # Run tests
 ```
 
 ## Configuration

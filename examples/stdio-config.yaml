@@ -1,13 +1,11 @@
 # Example configuration for testing a stdio MCP server
 server:
   transport: stdio
-  host: "python my_mcp_server.py"  # Command to run the server
+  host: "npx -y @modelcontextprotocol/server-everything"  # Command to run the server
 
 test:
-  tool_name: calculator
+  tool_name: echo
   tool_args:
-    operation: "add"
-    a: 10
-    b: 20
+    message: "Hello"
   concurrent_requests: 3
   duration_seconds: 15
